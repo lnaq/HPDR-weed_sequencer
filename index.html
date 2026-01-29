@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Breeding Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Space Grotesk', sans-serif; 
+            background-color: #02040a;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(254, 255, 127, 0.08), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(127, 255, 212, 0.08), transparent 25%);
+            color: #e2e8f0;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Panel Styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.2s;
+        }
+        .glass-input:focus {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(127, 255, 212, 0.5);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(127, 255, 212, 0.1);
+        }
+        
+        /* Fix for Dropdown Options Readability */
+        select option {
+            background-color: #02040a;
+            color: white;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+        
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Tier Glows */
+        .glow-t2:hover { box-shadow: 0 0 15px rgba(254, 255, 127, 0.15); border-color: rgba(254, 255, 127, 0.3); }
+        .glow-t3:hover { box-shadow: 0 0 15px rgba(127, 255, 212, 0.15); border-color: rgba(127, 255, 212, 0.3); }
+        .glow-t4:hover { box-shadow: 0 0 15px rgba(255, 191, 127, 0.15); border-color: rgba(255, 191, 127, 0.3); }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col p-3 md:p-5 selection:bg-emerald-500/30">
+
+    <!-- Compact Control Bar -->
+    <div class="shrink-0 glass-panel rounded-2xl p-4 mb-4 flex flex-col md:flex-row gap-4 items-end md:items-center z-10">
+        
+        <!-- Seed Selector -->
+        <div class="flex-grow w-full md:w-auto">
+            <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5 ml-1">Target Strain</label>
+            <div class="relative group">
+                <select id="targetSeed" class="glass-input w-full text-sm rounded-xl px-4 py-2.5 appearance-none cursor-pointer">
+                    <option value="" disabled selected>Select a strain to engineer...</option>
+                </select>
+                <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-emerald-400 transition-colors">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Size -->
+        <div class="w-full md:w-32">
+            <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5 ml-1">Batch Size</label>
+            <input type="number" id="batchSize" value="1" min="1" class="glass-input w-full text-sm rounded-xl px-4 py-2.5 text-center font-mono">
+        </div>
+
+        <!-- Action Button -->
+        <button onclick="calculateBreeding()" class="w-full md:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg shadow-emerald-900/20 transition-all transform active:scale-95 text-sm flex items-center justify-center gap-2 h-[42px] mt-auto border border-emerald-500/20">
+            <i data-lucide="flask-conical" class="w-4 h-4"></i>
+            <span>Calculate</span>
+        </button>
+    </div>
+
+    <!-- Results Area -->
+    <div id="results" class="hidden flex-col flex-grow overflow-hidden gap-4 animate-in fade-in duration-500">
+        
+        <!-- Stats Strip -->
+        <div class="shrink-0 grid grid-cols-1 md:grid-cols-12 gap-4">
+            <!-- Shopping List -->
+            <div class="md:col-span-10 glass-panel rounded-xl p-3 flex items-center gap-4 overflow-hidden relative">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-indigo-500"></div>
+                <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 pl-2 shrink-0">
+                    <i data-lucide="shopping-bag" class="w-3.5 h-3.5 text-blue-400"></i> Base Seeds
+                </div>
+                <div id="baseIngredientsList" class="flex gap-2 overflow-x-auto items-center pb-0.5 scrollbar-hide">
+                    <!-- Pills injected here -->
+                </div>
+                <!-- Gradient fade for overflow -->
+                <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900/80 to-transparent pointer-events-none md:block hidden"></div>
+            </div>
+
+            <!-- Cost -->
+            <div class="md:col-span-2 glass-panel rounded-xl p-3 flex flex-col justify-center items-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-2 opacity-10">
+                    <i data-lucide="dollar-sign" class="w-12 h-12 text-green-400"></i>
+                </div>
+                <span class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-1">Cost</span>
+                
+                <div class="flex flex-col items-center w-full">
+                    <!-- Base Cost -->
+                    <span id="baseCostDisplay" class="text-emerald-400 font-bold text-sm font-mono tracking-tight"></span>
+                    
+                    <!-- Plus -->
+                    <i data-lucide="plus" class="w-3 h-3 text-slate-500 my-0.5"></i>
+                    
+                    <!-- Lab Cost (500 * n) -->
+                    <span id="labCostDisplay" class="text-slate-400 text-xs font-mono"></span>
+                    
+                    <!-- Divider -->
+                    <div class="w-1/2 h-px bg-slate-700 my-1"></div>
+                    
+                    <!-- Total -->
+                    <span id="grandTotalDisplay" class="text-emerald-300 font-bold text-lg font-mono text-shadow-glow"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scrollable Grid -->
+        <div class="flex-grow overflow-y-auto pr-2 -mr-2">
+            <!-- Increased gap-x to 8 to fit arrows -->
+            <div id="breedingSteps" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-4 pb-6">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIG & DATA ---
+        const baseStrains = ["Lemon Haze", "Northern Lights", "Blue Dream"];
+        const BASE_SEED_COST = 1000;
+        const LAB_FEE = 500;
+
+        const database = {
+            "Grape Ape": { tier: 2, p1: "Lemon Haze", p2: "Northern Lights", dna: ["C3", "D1", "B2", "A4"] },
+            "Green Crack": { tier: 2, p1: "Northern Lights", p2: "Northern Lights", dna: ["B2", "A3", "C1", "D4"] },
+            "Purple Kush": { tier: 2, p1: "Blue Dream", p2: "Lemon Haze", dna: ["D1", "C2", "A4", "B3"] },
+            "Blueberry Kush": { tier: 2, p1: "Northern Lights", p2: "Blue Dream", dna: ["A1", "B4", "D2", "C3"] },
+            "Pineapple Express": { tier: 3, p1: "Blueberry Kush", p2: "Purple Kush", dna: ["D4", "B3", "A1", "C2"] },
+            "Ocean Grow OG": { tier: 3, p1: "Purple Kush", p2: "Grape Ape", dna: ["B4", "D2", "C1", "A3"] },
+            "Strawberry Cough": { tier: 3, p1: "Green Crack", p2: "Blueberry Kush", dna: ["A2", "C4", "B1", "D3"] },
+            "Pink Kush": { tier: 4, p1: "Strawberry Cough", p2: "Pineapple Express", dna: ["C2", "A4", "D1", "B3"] },
+            "Cherry Pie": { tier: 4, p1: "Pineapple Express", p2: "Ocean Grow OG", dna: ["A3", "B1", "D4", "C2"] }
+        };
+
+        // --- UI UTILS ---
+        
+        const tierConfig = {
+            2: { color: '#feff7f', border: 'border-[#feff7f]/20', bg: 'bg-[#feff7f]/5', text: 'text-[#feff7f]', glow: 'glow-t2' },
+            3: { color: '#7fffd4', border: 'border-[#7fffd4]/20', bg: 'bg-[#7fffd4]/5', text: 'text-[#7fffd4]', glow: 'glow-t3' },
+            4: { color: '#ffbf7f', border: 'border-[#ffbf7f]/20', bg: 'bg-[#ffbf7f]/5', text: 'text-[#ffbf7f]', glow: 'glow-t4' }
+        };
+
+        const dnaColors = ['text-pink-400', 'text-purple-400', 'text-cyan-400', 'text-emerald-400'];
+
+        // --- INIT ---
+        const targetSelect = document.getElementById('targetSeed');
+        Object.keys(database).sort((a,b) => database[a].tier - database[b].tier).forEach(strain => {
+            const option = document.createElement('option');
+            option.value = strain;
+            option.textContent = `Tier ${database[strain].tier} - ${strain}`;
+            targetSelect.appendChild(option);
+        });
+
+        lucide.createIcons();
+
+        // --- CORE LOGIC ---
+        function calculateBreeding() {
+            const target = document.getElementById('targetSeed').value;
+            const amount = parseInt(document.getElementById('batchSize').value) || 1;
+            
+            if (!target) return;
+
+            const baseTotals = {};
+            const steps = []; 
+            
+            function resolve(strainName, qty) {
+                if (baseStrains.includes(strainName)) {
+                    baseTotals[strainName] = (baseTotals[strainName] || 0) + qty;
+                    return;
+                }
+                const recipe = database[strainName];
+                if (!recipe) return;
+
+                steps.push({ name: strainName, qty: qty, ...recipe });
+                resolve(recipe.p1, qty);
+                resolve(recipe.p2, qty);
+            }
+
+            resolve(target, amount);
+            // Sort by Tier then by Name for a clean flow
+            steps.sort((a, b) => (a.tier - b.tier) || a.name.localeCompare(b.name));
+            renderResults(baseTotals, steps, amount);
+        }
+
+        function getParentColorClass(strainName) {
+            if (baseStrains.includes(strainName)) return 'text-blue-300 font-bold';
+            const strainData = database[strainName];
+            if (strainData && tierConfig[strainData.tier]) return `${tierConfig[strainData.tier].text} font-bold`;
+            return 'text-slate-400';
+        }
+
+        function renderResults(baseTotals, steps, amount) {
+            const resultsDiv = document.getElementById('results');
+            const baseList = document.getElementById('baseIngredientsList');
+            const stepsList = document.getElementById('breedingSteps');
+            
+            const baseCostDisp = document.getElementById('baseCostDisplay');
+            const labCostDisp = document.getElementById('labCostDisplay');
+            const grandTotalDisp = document.getElementById('grandTotalDisplay');
+
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.classList.add('flex');
+            baseList.innerHTML = '';
+            stepsList.innerHTML = '';
+
+            let totalBaseCount = 0;
+
+            // Render Base List
+            if (Object.keys(baseTotals).length === 0) {
+                 baseList.innerHTML = `<span class="text-xs text-slate-500 italic pl-2">No base seeds needed.</span>`;
+            } else {
+                Object.entries(baseTotals).forEach(([name, count]) => {
+                    totalBaseCount += count;
+                    const el = document.createElement('div');
+                    el.className = "flex items-center bg-slate-800/80 border border-slate-700/50 rounded-lg pl-3 pr-1 py-1 text-xs shrink-0 shadow-sm";
+                    el.innerHTML = `
+                        <span class="text-slate-300 font-medium mr-2">${name}</span>
+                        <span class="text-blue-200 font-bold bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-[10px] min-w-[24px] text-center font-mono">${count}</span>
+                    `;
+                    baseList.appendChild(el);
+                });
+            }
+
+            // --- COST CALCULATION ---
+            const baseCost = totalBaseCount * BASE_SEED_COST;
+            const labCost = amount * LAB_FEE;
+            const grandTotal = baseCost + labCost;
+            
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+            
+            baseCostDisp.textContent = formatter.format(baseCost);
+            labCostDisp.textContent = `${LAB_FEE} * ${amount}`;
+            grandTotalDisp.textContent = formatter.format(grandTotal);
+
+
+            // Render Steps Cards
+            steps.forEach((step, index) => {
+                const conf = tierConfig[step.tier] || { color: '#cbd5e1', border: 'border-slate-700', bg: 'bg-slate-800', text: 'text-slate-300', glow: '' };
+                const p1Class = getParentColorClass(step.p1);
+                const p2Class = getParentColorClass(step.p2);
+                const isLast = index === steps.length - 1;
+
+                // Improved Arrow Logic: Brighter, positioned in larger gap
+                const arrowHtml = isLast ? '' : `
+                    <div class="absolute z-20 text-slate-500
+                        left-1/2 -bottom-5 transform -translate-x-1/2 rotate-90 
+                        sm:left-auto sm:rotate-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:-right-7">
+                        <i data-lucide="arrow-right" class="w-6 h-6 stroke-[3px] opacity-80 drop-shadow-lg"></i>
+                    </div>
+                `;
+
+                const card = document.createElement('div');
+                card.className = `fade-in glass-panel rounded-xl p-3.5 relative transition-all duration-300 group h-full flex flex-col justify-between ${conf.border} ${conf.glow}`;
+                card.style.animationDelay = `${index * 0.05}s`;
+                card.style.backgroundColor = `rgba(15, 23, 42, 0.6)`;
+                
+                const dnaHtml = step.dna.map((seq, i) => `
+                    <div class="flex flex-col items-center">
+                        <span class="text-[8px] text-slate-600 uppercase mb-0.5 font-bold tracking-tighter">Seq ${i+1}</span>
+                        <span class="w-full text-center bg-[#0a0a0a] border border-white/5 rounded text-[10px] py-1 font-bold font-mono ${dnaColors[i]} shadow-inner">${seq}</span>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-black/40 text-white font-mono font-bold text-xs h-8 w-8 flex items-center justify-center rounded-lg border border-white/10 shadow-inner group-hover:scale-110 transition-transform duration-300 group-hover:text-emerald-300">
+                                ${step.qty}
+                            </span>
+                            <div>
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Step ${index + 1}</span>
+                                </div>
+                                <h4 class="text-sm font-bold ${conf.text} leading-none truncate tracking-wide" style="text-shadow: 0 0 10px ${conf.color}40;">${step.name}</h4>
+                            </div>
+                        </div>
+                        <span class="${conf.text} ${conf.bg} border ${conf.border} text-[9px] font-bold uppercase px-2 py-0.5 rounded-full backdrop-blur-sm">Tier ${step.tier}</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <!-- Parents -->
+                        <div class="flex items-center justify-center gap-2 text-[10px] text-slate-400 bg-black/20 px-2 py-1.5 rounded-lg border border-white/5">
+                            <span class="${p1Class} truncate">${step.p1}</span>
+                            <i data-lucide="plus" class="w-3 h-3 text-slate-600"></i>
+                            <span class="${p2Class} truncate">${step.p2}</span>
+                        </div>
+
+                        <!-- DNA -->
+                        <div class="grid grid-cols-4 gap-1.5">
+                            ${dnaHtml}
+                        </div>
+                    </div>
+                    ${arrowHtml}
+                `;
+                stepsList.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
