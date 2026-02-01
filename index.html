@@ -38,6 +38,16 @@
             outline: none;
             box-shadow: 0 0 0 2px rgba(127, 255, 212, 0.1);
         }
+
+        /* Hide Number Input Spinners (The white bar fix) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
         
         /* Fix for Dropdown Options Readability */
         select option {
@@ -65,18 +75,19 @@
         .glow-t2:hover { box-shadow: 0 0 15px rgba(254, 255, 127, 0.15); border-color: rgba(254, 255, 127, 0.3); }
         .glow-t3:hover { box-shadow: 0 0 15px rgba(127, 255, 212, 0.15); border-color: rgba(127, 255, 212, 0.3); }
         .glow-t4:hover { box-shadow: 0 0 15px rgba(255, 191, 127, 0.15); border-color: rgba(255, 191, 127, 0.3); }
+        .glow-t5:hover { box-shadow: 0 0 15px rgba(255, 128, 191, 0.15); border-color: rgba(255, 128, 191, 0.3); }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col p-3 md:p-5 selection:bg-emerald-500/30">
 
     <!-- Compact Control Bar -->
-    <div class="shrink-0 glass-panel rounded-2xl p-4 mb-4 flex flex-col md:flex-row gap-4 items-end md:items-center z-10">
+    <div class="shrink-0 glass-panel rounded-2xl p-4 mb-3 flex flex-col md:flex-row gap-4 items-end md:items-center z-10">
         
         <!-- Seed Selector -->
         <div class="flex-grow w-full md:w-auto">
             <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5 ml-1">Target Strain</label>
             <div class="relative group">
-                <select id="targetSeed" class="glass-input w-full text-sm rounded-xl px-4 py-2.5 appearance-none cursor-pointer">
+                <select id="targetSeed" class="glass-input w-full text-sm rounded-xl px-4 py-2.5 appearance-none cursor-pointer" onchange="calculateBreeding()">
                     <option value="" disabled selected>Select a strain to engineer...</option>
                 </select>
                 <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-emerald-400 transition-colors">
@@ -96,6 +107,30 @@
             <i data-lucide="flask-conical" class="w-4 h-4"></i>
             <span>Calculate</span>
         </button>
+    </div>
+
+    <!-- Inventory Section -->
+    <div class="shrink-0 glass-panel rounded-xl p-3 mb-4 flex flex-wrap gap-4 items-center z-10">
+        <div class="flex items-center gap-2 mr-2">
+            <i data-lucide="backpack" class="w-4 h-4 text-indigo-400"></i>
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Inventory (Owned):</span>
+        </div>
+        
+        <!-- Inventory Inputs -->
+        <div class="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+            <label class="text-[10px] text-blue-300 font-bold uppercase">Lemon Haze</label>
+            <input type="number" id="inv-Lemon Haze" class="w-12 bg-transparent text-right text-sm text-white focus:outline-none border-b border-slate-600 focus:border-blue-400 font-mono" placeholder="0" min="0">
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+            <label class="text-[10px] text-blue-300 font-bold uppercase">N. Lights</label>
+            <input type="number" id="inv-Northern Lights" class="w-12 bg-transparent text-right text-sm text-white focus:outline-none border-b border-slate-600 focus:border-blue-400 font-mono" placeholder="0" min="0">
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+            <label class="text-[10px] text-blue-300 font-bold uppercase">Blue Dream</label>
+            <input type="number" id="inv-Blue Dream" class="w-12 bg-transparent text-right text-sm text-white focus:outline-none border-b border-slate-600 focus:border-blue-400 font-mono" placeholder="0" min="0">
+        </div>
     </div>
 
     <!-- Results Area -->
@@ -167,7 +202,8 @@
             "Ocean Grow OG": { tier: 3, p1: "Purple Kush", p2: "Grape Ape", dna: ["B4", "D2", "C1", "A3"] },
             "Strawberry Cough": { tier: 3, p1: "Green Crack", p2: "Blueberry Kush", dna: ["A2", "C4", "B1", "D3"] },
             "Pink Kush": { tier: 4, p1: "Strawberry Cough", p2: "Pineapple Express", dna: ["C2", "A4", "D1", "B3"] },
-            "Cherry Pie": { tier: 4, p1: "Pineapple Express", p2: "Ocean Grow OG", dna: ["A3", "B1", "D4", "C2"] }
+            "Cherry Pie": { tier: 4, p1: "Pineapple Express", p2: "Ocean Grow OG", dna: ["A3", "B1", "D4", "C2"] },
+            "Cherry Snowman": { tier: 5, p1: "Pink Kush", p2: "Cherry Pie", dna: ["D3", "C1", "A2", "B4"] }
         };
 
         // --- UI UTILS ---
@@ -175,7 +211,8 @@
         const tierConfig = {
             2: { color: '#feff7f', border: 'border-[#feff7f]/20', bg: 'bg-[#feff7f]/5', text: 'text-[#feff7f]', glow: 'glow-t2' },
             3: { color: '#7fffd4', border: 'border-[#7fffd4]/20', bg: 'bg-[#7fffd4]/5', text: 'text-[#7fffd4]', glow: 'glow-t3' },
-            4: { color: '#ffbf7f', border: 'border-[#ffbf7f]/20', bg: 'bg-[#ffbf7f]/5', text: 'text-[#ffbf7f]', glow: 'glow-t4' }
+            4: { color: '#ffbf7f', border: 'border-[#ffbf7f]/20', bg: 'bg-[#ffbf7f]/5', text: 'text-[#ffbf7f]', glow: 'glow-t4' },
+            5: { color: '#ff80bf', border: 'border-[#ff80bf]/20', bg: 'bg-[#ff80bf]/5', text: 'text-[#ff80bf]', glow: 'glow-t5' }
         };
 
         const dnaColors = ['text-pink-400', 'text-purple-400', 'text-cyan-400', 'text-emerald-400'];
@@ -189,12 +226,25 @@
             targetSelect.appendChild(option);
         });
 
+        // Add event listeners for live updates
+        document.getElementById('batchSize').addEventListener('input', calculateBreeding);
+        document.getElementById('inv-Lemon Haze').addEventListener('input', calculateBreeding);
+        document.getElementById('inv-Northern Lights').addEventListener('input', calculateBreeding);
+        document.getElementById('inv-Blue Dream').addEventListener('input', calculateBreeding);
+
         lucide.createIcons();
 
         // --- CORE LOGIC ---
         function calculateBreeding() {
             const target = document.getElementById('targetSeed').value;
             const amount = parseInt(document.getElementById('batchSize').value) || 1;
+            
+            // Get Inventory
+            const inventory = {
+                "Lemon Haze": parseInt(document.getElementById('inv-Lemon Haze').value) || 0,
+                "Northern Lights": parseInt(document.getElementById('inv-Northern Lights').value) || 0,
+                "Blue Dream": parseInt(document.getElementById('inv-Blue Dream').value) || 0
+            };
             
             if (!target) return;
 
@@ -217,7 +267,7 @@
             resolve(target, amount);
             // Sort by Tier then by Name for a clean flow
             steps.sort((a, b) => (a.tier - b.tier) || a.name.localeCompare(b.name));
-            renderResults(baseTotals, steps, amount);
+            renderResults(baseTotals, steps, amount, inventory);
         }
 
         function getParentColorClass(strainName) {
@@ -227,7 +277,7 @@
             return 'text-slate-400';
         }
 
-        function renderResults(baseTotals, steps, amount) {
+        function renderResults(baseTotals, steps, amount, inventory) {
             const resultsDiv = document.getElementById('results');
             const baseList = document.getElementById('baseIngredientsList');
             const stepsList = document.getElementById('breedingSteps');
@@ -242,25 +292,51 @@
             stepsList.innerHTML = '';
 
             let totalBaseCount = 0;
+            let netBaseCount = 0; // Total needed to BUY
 
             // Render Base List
             if (Object.keys(baseTotals).length === 0) {
                  baseList.innerHTML = `<span class="text-xs text-slate-500 italic pl-2">No base seeds needed.</span>`;
             } else {
                 Object.entries(baseTotals).forEach(([name, count]) => {
-                    totalBaseCount += count;
+                    const owned = inventory[name] || 0;
+                    const needed = Math.max(0, count - owned);
+                    netBaseCount += needed;
+                    totalBaseCount += count; // Total for recipe
+
+                    // Visual logic: if we own some, show breakdown
+                    let countHtml = `<span class="text-blue-200 font-bold bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-[10px] min-w-[24px] text-center font-mono">${needed}</span>`;
+                    
+                    if (owned > 0 && count > 0) {
+                        // Show "Need X" (Had Y)
+                        countHtml = `
+                            <div class="flex flex-col items-end leading-none gap-0.5">
+                                <span class="text-blue-200 font-bold bg-blue-500/20 px-1.5 py-0.5 rounded text-[10px]">${needed}</span>
+                                <span class="text-[8px] text-slate-500">Have ${Math.min(owned, count)}</span>
+                            </div>
+                        `;
+                    } else if (needed === 0 && count > 0) {
+                        // Have enough
+                         countHtml = `
+                            <div class="flex flex-col items-end leading-none gap-0.5">
+                                <span class="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded text-[10px] border border-emerald-500/20">OK</span>
+                                <span class="text-[8px] text-slate-500">Have ${owned}</span>
+                            </div>
+                        `;
+                    }
+
                     const el = document.createElement('div');
                     el.className = "flex items-center bg-slate-800/80 border border-slate-700/50 rounded-lg pl-3 pr-1 py-1 text-xs shrink-0 shadow-sm";
                     el.innerHTML = `
                         <span class="text-slate-300 font-medium mr-2">${name}</span>
-                        <span class="text-blue-200 font-bold bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-[10px] min-w-[24px] text-center font-mono">${count}</span>
+                        ${countHtml}
                     `;
                     baseList.appendChild(el);
                 });
             }
 
             // --- COST CALCULATION ---
-            const baseCost = totalBaseCount * BASE_SEED_COST;
+            const baseCost = netBaseCount * BASE_SEED_COST; // Only charge for needed
             const labCost = amount * LAB_FEE;
             const grandTotal = baseCost + labCost;
             
@@ -278,7 +354,6 @@
                 const p2Class = getParentColorClass(step.p2);
                 const isLast = index === steps.length - 1;
 
-                // Improved Arrow Logic: Brighter, positioned in larger gap
                 const arrowHtml = isLast ? '' : `
                     <div class="absolute z-20 text-slate-500
                         left-1/2 -bottom-5 transform -translate-x-1/2 rotate-90 
